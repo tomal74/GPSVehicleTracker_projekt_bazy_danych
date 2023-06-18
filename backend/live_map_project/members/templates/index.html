@@ -1,0 +1,121 @@
+<!doctype html>
+<html>
+<?xml version="1.0" encoding="utf-8"?>
+<head>
+	<meta charset="utf-8">
+    <title>Manual</title>
+    <style>
+        body, html {
+            background-color: lightslategray;
+            backdrop-filter: blur(5px);
+			max-height: 100%;
+        }
+
+        h1 {
+            color: blue;
+        }
+
+        p {
+            text-align: center;
+            width:100%;
+            font-size:4vw;
+        }
+		
+		.aut_cnt {
+            display: inline-block;
+			max-width: 50%;
+		}
+		
+		.authors {
+			margin-left: 10px;
+			margin-top: 15px;
+			font-size: 20px;
+			text-align: center;
+		}
+		
+		.year {
+			font-size: 18px;
+		}
+        
+        .left_bar {
+            margin-top: 33px;
+            border-style: solid;
+            height: 200px;
+            width: 250px; 
+            font-size: 18px;
+            padding: 15px;
+            display: block;
+            line-height: 33px;
+        }
+		
+		.gpxframe {
+    		width: 77%;
+            height: auto;   
+    		border-style: solid;
+            float:right;
+		}
+        
+        a {
+            text-decoration: none;
+        }
+
+		
+    </style>
+
+
+</head>
+
+<body>
+	<div class=aut_cnt>
+		<div class="authors">
+				Tomasz Konieczka<br>
+				<span class="year">Poznań 2023</span>
+		</div>
+        
+        <div class=left_bar>
+            {% for x in all_trips %}
+                <a href="{{x.id}}">{{x.gpx_files}}</a><br>
+            {% endfor %}
+        </div>
+        
+	</div>
+
+    
+<div class=gpxframe>
+    <iframe src="http://127.0.0.1:9000?state=%7B%22urls%22:%5B%22{{ mytrip }}%22%5D%7D&embed&mapbox-style=j&distance" width="100%" height="850px" frameborder="0" allowfullscreen><p><a href="https://gpx.studio/?state=%7B%22urls%22:%5B%22costam%22%5D%7D"></a></p></iframe>
+</div>
+
+</body></html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
