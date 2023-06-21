@@ -105,12 +105,13 @@ import datetime
 
 
 
-class NMEA2GPX(TCPclient):
+class NMEA2GPX(TCPclient, multiprocessing.Process):
     GPX_BUFF_LEN = 1024 * 1024
     
     
     def __init__(self, port, host, maxConnectRetryNo, driver, car):
         super().__init__(port, host, maxConnectRetryNo)
+        super(multiprocessing.Process, self).__init__()
         
         self.GPStime = datetime.time()
         self.ZDAtime = datetime.datetime(2023, 5, 26)
@@ -141,7 +142,14 @@ class NMEA2GPX(TCPclient):
         self.car = car
         self.gpx_path = ''
         self.gpxstudio_path = '' 
-    
+        
+        # to musi zostac utworzone tylko w nowym procesie (bo nie jest pickable) - dlatego stworzymy to w nadpisanej (po dziedziczeniu Process) 
+        # metodzie run(), i tam dopiero zrobimy te polaczenia do database. Dzieki temu - umiesczeniu w run() tworzymy te obiekty tylko 
+        # w nowym procesie (przed run cala pamiec jest kopia poprzedniego procesu - procesu rodzica (parent), a jako ze nie mozna zserializowac 
+        # obiektu typu pyobdc.cursor to tworzymy go w nowym procesie - patrz jak dziala LINUXowe fork() )). 
+        self.DBhandler = None
+        self.db = None
+        
     def nmea2gpx(self, parsed_data): 
         
         if(self.GGAcnt == 0):
@@ -217,7 +225,20 @@ class NMEA2GPX(TCPclient):
             else:
                 file.write("\n" + self.gpx_str)
 
-            DBG.INFO('GPX file has been saved')       
+            DBG.INFO('GPX file has been saved')   
+    
+        
+    def run(self):
+        print('\n\n\nrun wyzwolony\n\n')
+        self.DBhandler = DatabaseConnector('localhost\sqlexpress', 'TSQL', 'MSI/tomal')
+        self.db = DB_Manager(self.DBhandler.cursor)
+        print('\n\n\npolaczono do bazy danych w nowym watku!\n\n')
+        
+        self.main_loop(self.gpx_path)
+        
+        
+        
+                
             
     def main_loop(self, filename : str):    
         NMEAbuff = []
@@ -227,6 +248,8 @@ class NMEA2GPX(TCPclient):
             data = self.recData()
             
             if(self.connected == False):
+                self.db.addTrip(self.driver[DBO.ID], self.car[DBO.ID], self.gpxstudio_path)
+                self.db.saveChanges()
                 break
             
             NMEAbuff = str.split(data.decode())
@@ -246,11 +269,11 @@ class NMEA2GPX(TCPclient):
         
         self.gpxstudio_path = GPXSTUDIO_ROOT + temp_path + '.gpx'
         self.gpx_path = ROOT_PATH + temp_path 
-        self.t1 = multiprocessing.Process(target=self.main_loop, args=(self.gpx_path,))
+        #self.t1 = multiprocessing.Process(target=self.main_loop, args=(self.gpx_path,))
         if(self.connected == False):
             return -1
         print('listening GNSS device')
-        self.t1.start()
+        self.start()
         return 0
         
     def runMain2(self):
@@ -261,6 +284,7 @@ class NMEA2GPX(TCPclient):
 
 
 if __name__ == '__main__':
+   # multiprocessing.set_start_method('spawn')  # spawn - UNIX, macOS(default) and Windows(default) | fork - only UNIX(default)
     
     DBhandler = DatabaseConnector('localhost\sqlexpress', 'TSQL', 'MSI/tomal')
     db = DB_Manager(DBhandler.cursor)
@@ -288,11 +312,11 @@ if __name__ == '__main__':
         #nmr2 = NMEA2GPX(PORT+1, HOST, 3)
         #nmr2.runMain2()
         
-        if(nmr.t1.is_alive() == True):
-            nmr.t1.join()
+        if(nmr.is_alive() == True):
+            nmr.join()
             
-            db.addTrip(nmr.driver[DBO.ID], nmr.car[DBO.ID], nmr.gpxstudio_path)
-            db.saveChanges()
+            #db.addTrip(nmr.driver[DBO.ID], nmr.car[DBO.ID], nmr.gpxstudio_path)
+            #db.saveChanges()
         time.sleep(2)
 
     
